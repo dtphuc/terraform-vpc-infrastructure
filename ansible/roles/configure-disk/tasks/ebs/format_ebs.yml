@@ -1,0 +1,44 @@
+---
+- name: Disk | Check if drives are already mounted
+  shell: df | grep "{{ data_disk }}" | wc -l
+  when: data_disk is defined
+  register: ebs_checked
+
+- name: Disk | Output debug of ebs_checked
+  debug: var=ebs_checked
+
+- name: Disk | Create mount point
+  file:
+    path: "{{ mount_point }}"
+    mode: 0755
+    state: directory
+  register: create_mount_point
+  when:
+    - mount_point is defined
+
+- name: Disk | Format EBS Volume
+  filesystem:
+    dev: "{{ data_disk }}"
+    fstype: "{{ fs_type }}"
+  register: format_ebs_volume
+  when:
+    - data_disk is defined
+    - fs_type is defined
+    - ebs_checked.stdout == "0"
+
+- name: Disk | Mount the Volume
+  mount:
+    name: "{{ mount_point }}"
+    src: "{{ data_disk }}"
+    fstype: "{{ fs_type }}"
+    opts: "defaults"
+    state: present
+  when:
+    - data_disk is defined
+    - fs_type is defined
+    - create_mount_point
+  register: fstab
+
+- name: Disk | Reload fstab
+  command: mount -av
+  when: fstab.changed

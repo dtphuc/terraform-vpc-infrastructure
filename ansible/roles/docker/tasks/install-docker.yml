@@ -1,0 +1,25 @@
+---
+- name: Docker | CE | YUM | Deploy repository
+  shell: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  args:
+    creates: /etc/yum.repos.d/docker-ce.repo
+
+- name: Docker | CE | YUM | Install Docker Application
+  yum:
+    name: docker-ce-{{ docker_version }}
+    state: present
+  notify: Docker | Enable Docker
+
+- name: Docker | Add user to docker group
+  user:
+    name: "{{ user_name }}"
+    group: docker
+    append: yes
+
+- name: Docker | Download the current stable release of Docker Compose
+  get_url:
+    url: https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-Linux-x86_64
+    dest: /usr/local/bin/docker-compose
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
+    mode: 0755

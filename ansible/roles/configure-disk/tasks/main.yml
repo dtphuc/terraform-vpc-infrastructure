@@ -1,0 +1,7 @@
+---
+- name: Disk | EBS | Format EBS data disk
+  include: ebs/format_ebs.yml
+  when:
+    - data_disk is defined
+    - fs_type is defined
+    - mount_point is defined

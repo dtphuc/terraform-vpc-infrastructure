@@ -1,0 +1,18 @@
+---
+- name: Docker | Daemon-reload
+  shell: systemctl daemon-reload
+
+- name: Docker | Start Docker
+  service: name=docker state=started
+
+- name: Docker | Restart Docker
+  service: name=docker state=restarted
+
+- name: Docker | Stop Docker
+  service: name=docker state=stopped
+
+- name: Docker | Enable Docker
+  shell: systemctl enable docker.service
+
+- name: Docker | CE | YUM | Upgrade to Edge
+  yum: name=docker-ce state=latest

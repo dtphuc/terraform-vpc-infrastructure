@@ -1,0 +1,38 @@
+---
+- name: Enable epel-repo
+  yum: name=epel-release state=present
+
+- name: upgrade all packages
+  yum: name=* state=latest
+
+- name: Install basic packages
+  yum: name={{ item }} state=latest
+  ignore_errors: yes
+  with_items:
+    - vim
+    - unzip
+    - zip
+    - tar
+    - curl
+    - device-mapper-persistent-data
+    - lvm2
+    - automake
+    - fuse
+    - fuse-devel
+    - gcc-c++
+    - git
+    - libcurl-devel
+    - libxml2-devel
+    - make
+    - openssl-devel
+    - nfs-utils
+    - yum-utils
+    - mysql
+    - telnet
+    - bind-utils
+    - wget
+    - jq
+    - python-pip
+
+- name: Install awscli
+  pip: name=awscli state=present

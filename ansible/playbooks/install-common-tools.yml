@@ -1,0 +1,14 @@
+---
+- hosts: all
+  become: yes
+  serial: 1
+  gather_facts: no
+  roles:
+    - role: ../roles/common
+
+    - role: ../roles/configure-disk
+      data_disk: /dev/xvdb
+      fs_type: xfs
+      mount_point: /opt/dcore
+
+    - role: ../roles/docker
