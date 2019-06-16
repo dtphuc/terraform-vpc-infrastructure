@@ -1,16 +1,21 @@
 # A Practical Example
+
 This guide will show you how to create Dcore Node and the whole infrastructure with Terraform. The system will have 4 subnets (2 public subnets and 2 private subnets) to span across 2 AZs to archive HA in case of one AZ is failed. I recommend you need to have at least 2 AZs when deploying application. You can refer the image which I also attached here.
 
 I will use Application Load Balancer in the public subnet to handle the traffic to Dcore (ALB support Web Socket). The Dcore Node will be on the private subnet and it will only be accessible through the ALB. This mean that we won’t have direct access to make connections (for example, SSH) on the server. In order to access via SSH an instance on a private subnet, we have a bastion host (We will run Ansible playbooks in Bastion also). Thus, we will create the bastion host on the public subnet.
 
 Following Immutable Server Pattern, I use Packer and Ansible to bake 2 AMIs for Bastion and Dcore Node
+
 * The Bastion AMI will be baked with most common tools (netcat, jq, wget,curl, so on) and Ansible to be able to run Playbooks from here.
+
 * The Dcore AMI will be baked with most common tools like Bastion and also install Docker to be able to spin up service from Docker image.
 
 Because we have sensitive data there so that I use KMS to encrypt all the EBS volumes to protect the data inside every EC2 instances.
 
 ## Directory Structure
+
 I have "infrastructure" directory which contains code to create VPC/Network ACL and have different directory for every environments (dev, prod, uat, etc). Each of this directory contains code to use shared modules and create a different architecture for each environment. This is my personal approach using Terraform. The structure is like below:
+
 ```sh
 infrastructure/
     dev/
@@ -29,7 +34,6 @@ environment/
       output.tf   # output of every resources
       vars.tf     # contains variable for every resources
       backend.tf  # store the terraform state for application.
-      
     prod/         # provision AWS resources for Prod environment
       main.tf     # main file contains all the necessary modules need to be run
       output.tf   # output of every resources
@@ -57,9 +61,11 @@ templates/
 ```
 
 ## Note
+
 Because I don't have the data to mount and a genesis file to run Dcore Node. Therefore, I just start docker from nginx image without data mount point to test and make sure that we can spin up Docker from userdata. To be able to run Dcore image with bind mount, I also configured Terraform to read the data mount point and retrieve that value in userdata. Here is what I follow:
 
 1. Userdata script
+
 ```sh
 #!/usr/bin/bash
 
@@ -79,6 +85,7 @@ docker run --rm --name Nginx -d \
 ```
 
 2. Terraform template file
+
 As you can see, We will define variable "mount_dir" in Terraform.
 The /opt/dcore is already baked within AMI with Packer.
 
@@ -92,6 +99,7 @@ data "template_file" "configure_app" {
 ```
 
 ## Prerequisites
+
 1. [Packer](https://www.packer.io/downloads.html)
 2. [Terraform](https://www.terraform.io/downloads.html)
 3. [Configure AWS credentials](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html)
@@ -105,15 +113,66 @@ region = eu-west-1
 ```
 
 ## Setup
+
+1.Checkout the source code
+
 ```sh
 $ git clone https://github.com/dtphuc/terraform-dcore.git
 ```
 
+2.Create a DynamoDB table "terraform-locking" with Primary key (LockID). This will be useful when you have many members working in same tfstate.
+
+3.Create S3 bucket with two folders (infrastructure, environment) to store Terraform state and then configure Terraform like below:
+
+environment/dev/backend.tf
+
+```sh
+terraform {
+    backend "s3" {
+        bucket         = "awslabs-tfstate-123"
+        key            = "environment/dev_dcore.tfstate"
+        region         = "ap-southeast-1"
+        encrypt        = "true"
+        dynamodb_table = "terraform-locking"
+    }
+}
+
+data "terraform_remote_state" "dev_vpc" {
+  backend = "s3"
+  config {
+    bucket         = "awslabs-tfstate-123"
+    key            = "infrastructure/env_dev_dcore.tfstate"
+    region         = "ap-southeast-1"
+    encrypt        = "true"
+    dynamodb_table = "terraform-locking"
+  }
+}
+
+```
+
+infrastructure/dev/backend.tf
+
+```sh
+terraform {
+    backend "s3" {
+        bucket         = "awslabs-tfstate-123"
+        key            = "infrastructure/env_dev_dcore.tfstate"
+        region         = "ap-southeast-1"
+        encrypt        = "true"
+        dynamodb_table = "terraform-locking"
+    }
+}
+```
+
+
 ## Configure
+
 All these values that you may need to change it. 
+
 * bastion_amd_id: you can change to your AMI when built out from Packer
 * aws_image_id: Dcore Node AMI.
 * custom_security_group: You can change to your IP to be able to access ALB.
+
 ```sh
 variable "bastion_ami_id" {
   description = "AMI of Bastion Host"
@@ -130,8 +189,11 @@ variable "custom_security_group" {
 ```
 
 ### First Module: Create VPC and Networking
+
 We will create the VPC firstly. This will be responsible for creating the networking pieces of our infrastructure, like VPC, subnets, routing table, NAT Gateway and NACL.
+
 * Initializing
+
 ```sh
 $ cd terraform-dcore
 $ terraform init terraform/infrastructure/dev
@@ -153,8 +215,11 @@ If you ever set or change modules or backend configuration for Terraform,
 rerun this command to reinitialize your working directory. If you forget, other
 commands will detect it and remind you to do so if necessary.
 ```
+
 * Planning
+
 After initializing , we will produce a plan for changing resources to match the current configuration to have a human operator review the plan, to ensure it is acceptable.
+
 ```sh
 $ terraform plan terraform/infrastructure/dev
 
@@ -189,12 +254,18 @@ can't guarantee that exactly these actions will be performed if
 
 Releasing state lock. This may take a few moments...
 ```
+
 * Deploying
+
 After planning, you can review the infrastructure before running "terraform apply" to make changes. To make changes happen, we will run the command:
+
 ```sh
+
 $ terraform apply -auto-approve terraform/infrastructure/dev  
 ```
+
 After applied, you can see the output like below:
+
 ```sh
 Apply complete! Resources: 27 added, 0 changed, 0 destroyed.
 Releasing state lock. This may take a few moments...
@@ -228,9 +299,11 @@ vpc_route_tables = [
 ```
 
 ## Second Module: Dcore App
+
 After the VPC is setup, we will go next step to create our application there. That will include Bastion Host, ALB, ASG for DCore Node, IAM User/Group/Role, S3 Bucket, so on.
 
 * Initializing
+
 ```sh
 $ terraform init terraform/environment/dev
 
@@ -271,7 +344,9 @@ Do you want to copy existing state to the new backend?
 The reason is because we just use "default" workspace when we initialized "infrastructure" tfstate when setup VPC in the last command. Now Terraform detects there is an existing state and ask us to overwrite it or not. We will enter value "no" to let terraform configure new backend "s3".
 
 * Planning
+
 After successfully initializing, you will run "terraform plan" to see what changes
+
 ```sh
 $ terraform plan terraform/environment/dev     
 
@@ -307,6 +382,7 @@ can't guarantee that exactly these actions will be performed if
 ```
 
 * Deploying
+
 ```sh
 $ terraform apply -auto-approve terraform/environment/dev
 ```
@@ -331,4 +407,5 @@ tester_username = tester1
 ```
 
 ## Contact
+
 If you have any trouble when deploying it, please feel free to contact me dangphuc1302@gmail.com
