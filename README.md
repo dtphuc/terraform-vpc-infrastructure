@@ -163,7 +163,22 @@ terraform {
     }
 }
 ```
-
+In modules/bastion/vars.tf, you will need to define remote backend from "Infrastructure" because the Bastion Host needs to be deployed to public subnets.
+```sh
+/*
+# Retrieves state meta data from a remote backend
+*/
+data "terraform_remote_state" "vpc" {
+  backend = "s3"
+  config {
+    bucket         = "awslabs-tfstate-123"
+    key            = "infrastructure/env_dev_dcore.tfstate"
+    region         = "ap-southeast-1"
+    encrypt        = "true"
+    dynamodb_table = "terraform-locking"
+  }
+}
+```
 
 ## Configure
 
