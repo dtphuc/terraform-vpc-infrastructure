@@ -1,14 +1,14 @@
 # A Practical Example
 
-This guide will show you how to create Dcore Node and the whole infrastructure with Terraform. The system will have 4 subnets (2 public subnets and 2 private subnets) to span across 2 AZs to archive HA in case of one AZ is failed. I recommend you need to have at least 2 AZs when deploying application. You can refer the image which I also attached here.
+This guide will show you how to create an Application and the whole infrastructure with Terraform. The system will have 4 subnets (2 public subnets and 2 private subnets) to span across 2 AZs to archive HA in case of one AZ is failed. I recommend you need to have at least 2 AZs when deploying application. You can refer the image which I also attached here.
 
-I will use Application Load Balancer in the public subnet to handle the traffic to Dcore (ALB support Web Socket). The Dcore Node will be on the private subnet and it will only be accessible through the ALB. This mean that we won’t have direct access to make connections (for example, SSH) on the server. In order to access via SSH an instance on a private subnet, we have a bastion host (We will run Ansible playbooks in Bastion also). Thus, we will create the bastion host on the public subnet.
+I will use Application Load Balancer in the public subnet to handle the traffic to Application (ALB support Web Socket). The Application Node will be on the private subnet and it will only be accessible through the ALB. This mean that we won’t have direct access to make connections (for example, SSH) on the server. In order to access via SSH an instance on a private subnet, we have a bastion host (We will run Ansible playbooks in Bastion also). Thus, we will create the bastion host on the public subnet.
 
-Following Immutable Server Pattern, I use Packer and Ansible to bake 2 AMIs for Bastion and Dcore Node
+Following Immutable Server Pattern, I use Packer and Ansible to bake 2 AMIs for Bastion and App Node
 
 * The Bastion AMI will be baked with most common tools (netcat, jq, wget,curl, so on) and Ansible to be able to run Playbooks from here.
 
-* The Dcore AMI will be baked with most common tools like Bastion and also install Docker to be able to spin up service from Docker image.
+* The App AMI will be baked with most common tools like Bastion and also install Docker to be able to spin up service from Docker image.
 
 Because we have sensitive data there so that I use KMS to encrypt all the EBS volumes to protect the data inside every EC2 instances.
 
@@ -23,46 +23,28 @@ infrastructure/
       output.tf   # output of VPC resources
       vars.tf     # contains variable for VPC resources
       backend.tf  # store the terraform state for infrastructure. 
-    prod/
-      main.tf     # main file contains the VPC modules need to be run
-      output.tf   # output of VPC resources
-      vars.tf     # contains variable for VPC resources
-      backend.tf  # store the terraform state for infrastructure. 
+
 environment/
     dev/          # provision AWS resources for DEV environment
       main.tf     # main file contains all the necessary modules need to be run
       output.tf   # output of every resources
       vars.tf     # contains variable for every resources
       backend.tf  # store the terraform state for application.
-    prod/         # provision AWS resources for Prod environment
-      main.tf     # main file contains all the necessary modules need to be run
-      output.tf   # output of every resources
-      vars.tf     # contains variable for every resources
-      backend.tf  # store the terraform state for application.
 keys/
       dev_keypair.pub  # public key import to AWS Keypair in Dev 
-      prod_keypair.pub # public key import to AWS Keypair in Prod
 modules/
       bastion/          # Bastion template modules
-      cloudwatch-logs/  # CloudWatch-Logs template module
       alb/              # ALB template module
       asg/              # ASG template module
-      iam_role/         # IAM Role template module
-      iam_user_groups/  # IAM User/Group template module
-      s3bucket/         # S3 Bucket template module
-      network-acl       # Network ACL module
       vpc/              # VPC template module
 templates/         
       bastion-userdata.sh.tpl  # Userdata to run in bastion host
-      dcore-userdata.sh.tpl    # userdata to run in ASG Dcore Nodes.
-      dev_policy.json          # IAM Policy for Group Dev
-      tester_policy.json       # IAM Policy for Group Tester
-      ec2_policy               # IAM Policy for EC2 Instance Profile Role
+      userdata.sh.tpl    # userdata to run in ASG App Nodes.
 ```
 
 ## Note
 
-Because I don't have the data to mount and a genesis file to run Dcore Node. Therefore, I just start docker from nginx image without data mount point to test and make sure that we can spin up Docker from userdata. To be able to run Dcore image with bind mount, I also configured Terraform to read the data mount point and retrieve that value in userdata. Here is what I follow:
+Because I don't have the data to mount and a genesis file to run App Node. Therefore, I just start docker from nginx image without data mount point to test and make sure that we can spin up Docker from userdata. To be able to run App image with bind mount, I also configured Terraform to read the data mount point and retrieve that value in userdata. Here is what I follow:
 
 1. Userdata script
 
@@ -71,30 +53,17 @@ Because I don't have the data to mount and a genesis file to run Dcore Node. The
 
 systemctl start docker
 
-# Configure ${mount_dir} as a variable
-# docker run --rm --name DCore -d \
-#         -p 8090:8090 \
-#         -p 40000:40000 \
-#         --mount type=bind,src=${mount_dir},dst=/root/.decent/data \
-#         decentnetwork/dcore.ubuntu
-
-# This is just used to test to make sure port 8090 work well.
+# This is just used to test to make sure port 8080 work well.
 docker run --rm --name Nginx -d \
-        -p 8090:8080 \
+        -p 8080:8080 \
         bitnami/nginx:latest
 ```
 
 2. Terraform template file
 
-As you can see, We will define variable "mount_dir" in Terraform.
-The /opt/dcore is already baked within AMI with Packer.
-
 ```sh
 data "template_file" "configure_app" {
-  	template = "${file("${path.module}/../../templates/dcore-userdata.sh.tpl")}"
-  	vars {
-		mount_dir = "/opt/dcore"
-	}
+  	template = "${file("${path.module}/../../templates/userdata.sh.tpl")}"
 }
 ```
 
@@ -185,7 +154,7 @@ data "terraform_remote_state" "vpc" {
 All these values that you may need to change it. 
 
 * bastion_amd_id: you can change to your AMI when built out from Packer
-* aws_image_id: Dcore Node AMI.
+* aws_image_id: App Node AMI.
 * custom_security_group: You can change to your IP to be able to access ALB.
 
 ```sh
@@ -194,7 +163,7 @@ variable "bastion_ami_id" {
   default     = "ami-0310794100e4f4d59"
 }
 variable "aws_image_id" {
-  description = "AWS AMI to be used for Dcore Node"
+  description = "AWS AMI to be used for App Node"
   default     = "ami-09ca247aaaa584bca"
 }
 variable "custom_security_group" {
