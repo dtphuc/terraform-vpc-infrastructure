@@ -1,6 +1,6 @@
 provider "aws" {
-  region     = "${var.aws_region}"
-  version    = "~> 1.0"
+  region  = var.aws_region
+  version = "~> 2.7"
 }
 
 locals {
@@ -82,21 +82,24 @@ locals {
 
 module "dev_vpc" {
   source                  = "../../modules/vpc"
-  aws_environment         = "${var.aws_environment}"
-  aws_vpc_name            = "${var.aws_vpc_name}"
-  aws_vpc_cidr            = "${var.aws_vpc_cidr}"
-  aws_availability_zones  = "${var.aws_availability_zones}"
-  public_subnet_cidr_all  = "${var.public_subnet_cidr_all}"
-  private_subnet_cidr_all = "${var.private_subnet_cidr_all}"
+  create_vpc              = var.create_vpc
+  aws_environment         = var.aws_environment
+  aws_vpc_name            = "${var.aws_environment}-${var.aws_vpc_name}"
+  aws_vpc_cidr            = var.aws_vpc_cidr
+  aws_availability_zones  = var.aws_availability_zones
+  public_subnet_cidr_all  = var.public_subnet_cidr_all
+  create_private_subnet   = var.create_private_subnet
+  private_subnet_cidr_all = var.private_subnet_cidr_all
 }
 
 module "dev_vpc_nacl" {
   source                 = "../../modules/network-acl"
-  aws_vpc_id             = "${module.dev_vpc.vpc_id}"
-  private_subnet_ids     = "${module.dev_vpc.private_subnet_ids}"
-  public_subnet_ids      = "${module.dev_vpc.public_subnet_ids}"
-  private_inbound_rules  = "${concat(local.network_acls["private_inbound_rules"])}"
-  private_outbound_rules = "${concat(local.network_acls["private_outbound_rules"])}"
-  public_inbound_rules   = "${concat(local.network_acls["public_inbound_rules"])}"
-  public_outbound_rules  = "${concat(local.network_acls["public_outbound_rules"])}"
+  aws_vpc_id             = module.dev_vpc.vpc_id
+  private_subnet_ids     = module.dev_vpc.private_subnet_ids
+  public_subnet_ids      = module.dev_vpc.public_subnet_ids
+  private_inbound_rules  = concat(local.network_acls["private_inbound_rules"])
+  private_outbound_rules = concat(local.network_acls["private_outbound_rules"])
+  public_inbound_rules   = concat(local.network_acls["public_inbound_rules"])
+  public_outbound_rules  = concat(local.network_acls["public_outbound_rules"])
 }
+

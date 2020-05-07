@@ -1,0 +1,65 @@
+{
+  "variables": {
+    "region": "ap-southeast-1",
+    "source_ami_name": "CentOS Linux 7 x86_64 HVM EBS*",
+    "ssh_username": "centos",
+    "instance_type": "t2.micro"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "region": "{{ user `region` }}",
+      "ami_name": "centos-dcore-{{isotime \"2006-01-02 03-04-05\"}}",
+      "instance_type": "{{user `instance_type` }}",
+      "associate_public_ip_address": true,
+      "ami_virtualization_type": "hvm",
+      "ssh_username": "{{user `ssh_username`}}",
+      "launch_block_device_mappings": [
+        {
+          "device_name": "/dev/sda1",
+          "volume_size": 20,
+          "volume_type": "gp2",
+          "delete_on_termination": true,
+          "encrypted": true
+        },
+        {
+          "device_name": "/dev/xvdb",
+          "volume_size": 50,
+          "volume_type": "gp2",
+          "delete_on_termination": true,
+          "encrypted": true,
+          "kms_key_id": "{{user `kms_key_id`}}"
+        }
+      ],
+      "source_ami_filter": {
+          "filters": {
+            "name": "{{ user `source_ami_name`}}"
+          },
+          "owners": ["679593333241"],
+          "most_recent": true
+      },
+      "run_tags": {
+        "Name": "Packer-Node-Builder",
+        "Requestor": "DevOps Team",
+        "SupportGroup": "Platform"
+      },
+      "tags": {
+        "os_version": "centos-7",
+        "Role": "Node",
+        "builder": "packer",
+        "Environment": "Dev"
+      }
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "ansible",
+      "playbook_file": "ansible/playbooks/install-common-tools.yml",
+      "extra_arguments": [
+        "--extra-vars","ansible_python_interpreter=/usr/bin/python2.7",
+        "-vvv"
+      ],
+      "user": "centos"
+    }
+  ]
+}

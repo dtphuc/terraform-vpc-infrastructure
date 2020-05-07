@@ -28,20 +28,17 @@ variable "vpc_cidr_block" {
   description = "CIDR for subnet in VPC"
 }
 
-variable "custom_security_rules" {
-  type = "list"
-}
+variable "custom_security_rules" {}
 
 /*
 # Retrieves state meta data from a remote backend
 */
-data "terraform_remote_state" "vpc" {
+data "terraform_remote_state" "dev_vpc" {
   backend = "s3"
-  config {
-    bucket         = "awslabs-tfstate-123"
-    key            = "infrastructure/env_dev_dcore.tfstate"
+  config = {
+    bucket         = "dev-ap-southeast-1-devops-tfstate"
+    key            = "dev/dev_vpc.tfstate"
     region         = "ap-southeast-1"
     encrypt        = "true"
-    dynamodb_table = "terraform-locking"
   }
 }

@@ -17,7 +17,7 @@ resource "aws_security_group" "bastion_sgr" {
         from_port   = 22
         to_port     = 22
         protocol    = "tcp"
-        cidr_blocks = ["${var.custom_security_rules}"]
+        cidr_blocks = [var.custom_security_rules]
         description = "SSH from Home"
     }
 
@@ -29,9 +29,9 @@ resource "aws_security_group" "bastion_sgr" {
         description = "${var.aws_description}"
     }
 
-    vpc_id   = "${data.terraform_remote_state.vpc.vpc_id}"
+    vpc_id   = "${data.terraform_remote_state.dev_vpc.outputs.vpc_id}"
     
-    tags {
+    tags = {
         Name          = "sgr-${var.aws_environment}-${var.aws_bastion_sgr_name}"
         Environment   = "${var.aws_environment}"
         Comment       = "${var.aws_description}"
@@ -39,17 +39,17 @@ resource "aws_security_group" "bastion_sgr" {
 }
 
 resource "aws_instance" "bastion_server" {
-    ami                     = "${var.bastion_ami_id}"
-    availability_zone       = "${data.aws_availability_zones.available.names[0]}"
-    instance_type           = "${var.aws_instance_type}"
-    key_name                = "${var.aws_key_name}"
+    ami                     = var.bastion_ami_id
+    availability_zone       = data.aws_availability_zones.available.names[0]
+    instance_type           = var.aws_instance_type
+    key_name                = var.aws_key_name
     vpc_security_group_ids  = ["${aws_security_group.bastion_sgr.id}"]
-    subnet_id               = "${var.public_subnet_id}"
+    subnet_id               = var.public_subnet_id[0]
     associate_public_ip_address = true
     user_data               = "${file("${path.module}/../../templates/bastion-userdata.sh.tpl")}"
     disable_api_termination = "false"
 
-    tags {
+    tags = {
         Name        = "${var.aws_bastion_instance_name}"
         Environment = "${var.aws_environment}"
         Comment     = "${var.aws_description}"

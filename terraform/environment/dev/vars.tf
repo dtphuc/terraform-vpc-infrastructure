@@ -1,23 +1,24 @@
 variable "aws_region" {
-  default = "ap-southeast-1"
+  description = "Which region do you want to create?"
 }
 
 variable "aws_environment" {
+  description = "Which environment?"
   default = "dev"
 }
 
 variable "bastion_ami_id" {
   description = "AMI of Bastion Host"
-  default     = "ami-0310794100e4f4d59"
+  default     = "ami-0ec3cce62a6b4fc09"
 }
 
 variable "aws_vpc_name" {
-  default = "Dev-Dcore"
+  default = "devops-practice"
 }
 
 variable "aws_image_id" {
-  description = "AWS AMI to be used for Dcore Node"
-  default     = "ami-09ca247aaaa584bca"
+  description = "AWS AMI to be used for Node"
+  default     = "ami-0bc6a2a5613de8f18"
 }
 
 variable "aws_key_name" {
@@ -29,55 +30,28 @@ variable "aws_instance_type" {
   default  = "t2.micro"
 }
 
-variable "aws_bucket_name" {
-  default = "awslabs-dcore"
-}
-
-variable "bucket_acl" {
-  default = "private"
-}
-
-variable "versioning" {
-  default = "true"
-}
-
-variable "aws_policy_name" {
-  default = "ec2_dcore_policy"
-}
-
 variable "aws_profile_name" {
-  default = "ec2_dcore_profile"
+  default = "ec2_profile"
 }
 
 variable "aws_role_name" {
-  default = "ec2_dcore_role"
-}
-
-variable "aws_cloudwatch_log_name" {
-  default = "awslabs-dcore-logs"
-}
-variable "aws_cloudwatch_logstream_name" {
-  default = "awslabs-dcore-logstream"
-}
-
-variable "retention_in_days" {
-  default = "30"
+  default = "ec2_role"
 }
 
 variable "termination_policies" {
   description = "Policies to terminate your instance in ASG. Values: Default, OldestLaunchConfiguration, OldestInstance, ClosestToNextInstanceHour, NewestInstance"
-  type = "list"
+  type = list
   default = ["OldestLaunchConfiguration","OldestInstance","ClosestToNextInstanceHour","Default"]
 }
 
 variable "aws_role" {
-  description = "Describe about your stack/role of your application. For example: Dcore Nodes"
-  default     = "Dcore-Nodes"
+  description = "Describe about your stack/role of your application. For example: Nodes"
+  default     = "Nodes"
 }
 
 variable "target_group_port" {
   description = "Port to open so that ALB can route traffic to"
-  default     = "8090"
+  default     = "80"
 }
 
 variable "target_group_protocol" {
@@ -102,7 +76,7 @@ variable "condition_field" {
 }
 
 variable "condition_values" {
-  type     = "list"
+  type     = list
   default  = ["/"]
 }
 
@@ -165,7 +139,7 @@ variable "http_listener_count" {
 # Resource for ALB
 variable "http_listener_port" {
   description = "HTTP Port Listener"
-  type        = "list"
+  type        = list
   default     = ["80"]
 }
 
@@ -174,30 +148,10 @@ variable "http_listener_rule_count" {
   default     = "1"
 }
 
-variable "https_listener_count" {
-  description = "Numner of HTTPS Listener"
-  default     = "0"
-}
-
-variable "https_listener_port" {
-  description = "HTTP Port Listener"
-  type        = "list"
-  default     = ["80"]
-}
-
-variable "https_listener_rule_count" {
-  description = "Number of HTTP Listener Rule"
-  default     = "0"
-}
-
-variable "https_ssl_arn" {
-  default = ""
-}
-
 # For ASG
 variable "tagName" {
   description = "Your ASG Name to be applied as tag"
-  default     = "dev-dcore-asg"
+  default     = "dev-asg"
 }
 
 variable "tagEnvironment" {
@@ -207,12 +161,12 @@ variable "tagEnvironment" {
 
 variable "tagRole" {
   description = "Tagging Role for your ASG"
-  default     = "Dcore-Nodes"
+  default     = "Nodes"
 }
 
 variable "tagApplication" {
   description = "Tagging Application for your ASG"
-  default     = "Dcore"
+  default     = "AppNode"
 }
 
 variable "tagSupportGroup" {
@@ -231,6 +185,6 @@ variable "tagBuilder" {
 }
 
 variable "custom_security_group" {
-  description = "List of IP Address can be allowed to access ALB"
-  default = ["1.54.5.245/32", "42.114.143.216/32"]
+  description = "IP Address can be allowed to access ALB"
+  default = "1.53.197.158/32"
 }

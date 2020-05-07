@@ -1,20 +1,9 @@
 terraform {
     backend "s3" {
-        bucket         = "awslabs-tfstate-123"
-        key            = "environment/dev_dcore.tfstate"
-        region         = "ap-southeast-1"
-        encrypt        = "true"
-        dynamodb_table = "terraform-locking"
+      bucket         = "dev-ap-southeast-1-devops-tfstate"
+      key            = "dev/dev-devops-practice.tfstate"
+      region         = "ap-southeast-1"
+      encrypt        = "true"
+      dynamodb_table = "dev-ap-southeast-1-devops-locking"
     }
-}
-
-data "terraform_remote_state" "dev_vpc" {
-  backend = "s3"
-  config {
-    bucket         = "awslabs-tfstate-123"
-    key            = "infrastructure/env_dev_dcore.tfstate"
-    region         = "ap-southeast-1"
-    encrypt        = "true"
-    dynamodb_table = "terraform-locking"
-  }
 }
